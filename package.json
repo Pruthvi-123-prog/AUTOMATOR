@@ -1,0 +1,21 @@
+{
+  "name": "vtu-automator",
+  "version": "2.0.0",
+  "description": "Automated lecture progress filler for VTU OPEC/PEC online portal.",
+  "private": true,
+  "type": "commonjs",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node launch.js",
+    "dev": "node launch.js",
+    "server": "node server.js"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "playwright": "^1.49.1"
+  }
+}

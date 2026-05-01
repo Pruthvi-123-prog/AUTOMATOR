@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Environment (contains secrets)
+.env
+.env.local
+.env.*.local
+
+# Saved credentials / session data
+data/
+
+# Playwright browser binaries
+.playwright/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Temp
+*.tmp
+*.bak
+temp/

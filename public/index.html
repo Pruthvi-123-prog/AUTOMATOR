@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VTU Automation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app">
+    <section id="loginView" class="view">
+      <div class="panel">
+        <div class="brand">
+          <h1>VTU Automation</h1>
+          <p>Enter your email and password used to login to VTU portal.</p>
+        </div>
+        <form id="loginForm" class="form">
+          <div class="saved-accounts">
+            <div class="saved-header">
+              <span>Saved accounts</span>
+              <button type="button" id="useNewAccount" class="btn ghost small">Use new account</button>
+            </div>
+            <div id="savedAccounts" class="account-list"></div>
+            <div id="savedAccountsEmpty" class="muted small hidden">No saved accounts yet.</div>
+          </div>
+
+          <label for="email">Enter your email used to login to VTU portal</label>
+          <input type="email" id="email" name="email" placeholder="your.email@example.com" required />
+
+          <label for="password">Enter your password used to login to VTU portal</label>
+          <div class="password-field">
+            <input type="password" id="password" name="password" placeholder="password" required />
+            <button type="button" id="togglePassword" class="toggle-btn">Show</button>
+          </div>
+
+
+          <button type="submit" class="btn primary">Login</button>
+          <div id="loginStatus" class="status"></div>
+          <div id="loginError" class="status error hidden"></div>
+        </form>
+      </div>
+    </section>
+
+    <section id="dashboardView" class="view hidden" hidden style="display: none;">
+      <header class="topbar">
+        <div class="title">VTU Automation</div>
+        <div class="actions">
+          <span id="userEmail" class="muted"></span>
+          <button id="logoutBtn" class="btn ghost">Logout</button>
+        </div>
+      </header>
+
+      <section class="content">
+        <div class="section-header">
+          <h2>Courses</h2>
+          <button id="refreshBtn" class="btn ghost">Refresh</button>
+        </div>
+        <div id="courseList" class="course-list"></div>
+      </section>
+    </section>
+
+    <div id="progressModal" class="modal hidden" role="dialog" aria-modal="true" hidden style="display: none;">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 id="progressTitle">Filling lectures</h3>
+          <button id="progressClose" class="btn ghost">Close</button>
+        </div>
+        <div class="modal-body">
+          <div class="modal-row">
+            <div id="progressMeta" class="muted">Waiting for progress...</div>
+            <button id="progressStop" class="btn ghost">Stop</button>
+          </div>
+          <div class="overall">
+            <div class="bar">
+              <div id="overallBar" class="bar-fill"></div>
+            </div>
+            <div id="overallText" class="muted">0%</div>
+          </div>
+          <div id="progressList" class="progress-list"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
