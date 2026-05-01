@@ -142,6 +142,18 @@ This project interacts with a publicly accessible web portal using credentials t
 
 ---
 
+## Acknowledgements
+
+### 🌟 Special Contribution
+
+A huge thank you to **[Sumith](https://github.com/Sumith-030cd)** for their invaluable contribution to this project.
+
+Their insights, feedback, and collaboration played a key role in shaping the direction of this tool. This project wouldn't be what it is without their support.
+
+> *"Great things are never done alone."*
+
+---
+
 ## License
 
 MIT — see [LICENSE](LICENSE) for details.
