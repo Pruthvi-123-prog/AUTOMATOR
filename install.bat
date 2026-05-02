@@ -36,7 +36,7 @@ echo.
 
 :: Install npm packages
 echo  Installing dependencies...
-call npm install --silent
+call npm install 
 if %ERRORLEVEL% neq 0 (
     echo  [ERROR] npm install failed. Check your internet connection.
     pause
