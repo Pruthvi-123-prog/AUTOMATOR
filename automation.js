@@ -199,6 +199,9 @@ async function completeLecture(client, slug, id, duration, currentSeconds, onPro
     onProgress({ id, percent: startPercent, status: 'start', current, total: duration });
   }
 
+  let retries = 0;
+  const MAX_RETRIES = 2;
+
   while (current < duration) {
     if (abortSignal && abortSignal.aborted) {
       throw new Error('aborted');
@@ -208,10 +211,16 @@ async function completeLecture(client, slug, id, duration, currentSeconds, onPro
 
     try {
       const data = await sendProgress(client, slug, id, next, next - current, duration);
+      
+      if (data && data.success === false) {
+        throw Object.assign(new Error(data.message || 'Server error'), { response: { status: 500, data } });
+      }
+
       const percent = data?.data?.percent ?? Math.round((next / duration) * 100);
       const isDone = data?.data?.is_completed === true || percent >= 100;
 
       current = next;
+      retries = 0; // reset on success
 
       if (typeof onProgress === 'function') {
         onProgress({
@@ -233,7 +242,22 @@ async function completeLecture(client, slug, id, duration, currentSeconds, onPro
       if (err.message === '__TOKEN_RELOGIN_FAILED__') {
         throw new Error('Your session expired and re-login failed. Please log in again.');
       }
-      // All other errors (network blips, timeouts) — retry the chunk
+      
+      retries++;
+      if (retries > MAX_RETRIES) {
+        if (typeof onProgress === 'function') {
+          onProgress({ 
+            id, 
+            percent: Math.min(Math.round((current / duration) * 100), 100), 
+            status: 'vtu_error', 
+            current, 
+            total: duration 
+          });
+        }
+        return; // Abort this specific lecture, VTU server is failing repeatedly
+      }
+
+      // All other errors (network blips, timeouts, temporary 500s) — retry the chunk
       if (typeof onProgress === 'function') {
         onProgress({ id, percent: Math.min(Math.round((current / duration) * 100), 100), status: 'retry', current, total: duration });
       }

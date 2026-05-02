@@ -376,7 +376,23 @@ function startFill(slug, title) {
 
   source.addEventListener('done', () => {
     if (!courseData[slug]) return;
-    courseData[slug].metaText = 'All done! ✓';
+    
+    const entries = Object.values(courseData[slug].progressState);
+    const hasVtuError = entries.some(e => e.status === 'vtu_error');
+    const totalCount = courseData[slug].totalLectures || entries.length;
+    const totalPercent = entries.reduce((sum, item) => sum + (item.percent || 0), 0);
+    const average = totalCount > 0 ? Math.round(totalPercent / totalCount) : 100;
+    
+    if (hasVtuError || average < 100) {
+      courseData[slug].metaText = 'Completed with errors ⚠️';
+      if (!hasVtuError) {
+        const firstIncomplete = entries.find(e => (e.percent || 0) < 100);
+        if (firstIncomplete) firstIncomplete.status = 'vtu_error';
+      }
+    } else {
+      courseData[slug].metaText = 'All done! ✓';
+    }
+    
     stopStream(slug);
     renderTabs();
     if (activeTabSlug === slug) renderProgress();
@@ -421,7 +437,7 @@ function renderTabs() {
       : courseData[slug].title;
       
     const isDone = !activeStreams[slug] && courseData[slug].metaText.includes('done');
-    const isError = !activeStreams[slug] && (courseData[slug].metaText.includes('error') || courseData[slug].metaText.includes('lost'));
+    const isError = !activeStreams[slug] && (courseData[slug].metaText.includes('error') || courseData[slug].metaText.includes('lost') || courseData[slug].metaText.includes('errors'));
     
     let indicator = '';
     if (isDone) indicator = ' ✓';
@@ -484,6 +500,21 @@ function renderProgress() {
   overallText.textContent = `${cappedAvg}%`;
 
   progressList.innerHTML = '';
+  
+  const hasVtuError = entries.some(e => e.status === 'vtu_error');
+  if (hasVtuError) {
+    const warningNote = document.createElement('div');
+    warningNote.className = 'error-text';
+    warningNote.style.fontSize = '13px';
+    warningNote.style.padding = '10px';
+    warningNote.style.border = '1px solid #ff6b6b';
+    warningNote.style.borderRadius = '4px';
+    warningNote.style.marginBottom = '10px';
+    warningNote.style.backgroundColor = 'rgba(255, 107, 107, 0.1)';
+    warningNote.textContent = 'Note: VTU returned a server error for some lectures. This is not a script fault, it is a VTU side error. Please wait for VTU to update its website. The progress for affected lectures is stopped, but other valid IDs will continue filling.';
+    progressList.appendChild(warningNote);
+  }
+
   entries
     .sort((a, b) => a.id - b.id)
     .forEach((item) => {
@@ -491,8 +522,17 @@ function renderProgress() {
       row.className = 'progress-item';
 
       const label = document.createElement('div');
-      const statusEmoji = item.status === 'done' ? '✓' : item.status === 'retry' ? '↺' : '→';
+      let statusEmoji = '→';
+      if (item.status === 'done') statusEmoji = '✓';
+      else if (item.status === 'retry') statusEmoji = '↺';
+      else if (item.status === 'vtu_error') statusEmoji = '⚠️';
+      
       label.textContent = `Lecture ${item.id} ${statusEmoji} ${item.percent}%`;
+      
+      if (item.status === 'vtu_error') {
+        label.classList.add('error-text');
+        label.textContent += ' (VTU Server Error)';
+      }
 
       const bar = document.createElement('div');
       bar.className = 'bar';
@@ -500,7 +540,8 @@ function renderProgress() {
       const fill = document.createElement('div');
       fill.className = 'bar-fill';
       fill.style.width = `${Math.min(item.percent || 0, 100)}%`;
-      if (item.status === 'done') fill.style.opacity = '0.6';
+      if (item.status === 'done' || item.status === 'vtu_error') fill.style.opacity = '0.6';
+      if (item.status === 'vtu_error') fill.style.backgroundColor = '#ff6b6b';
 
       bar.appendChild(fill);
       row.appendChild(label);
