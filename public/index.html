@@ -56,18 +56,22 @@
       <section class="content">
         <div class="section-header">
           <h2>Courses</h2>
-          <button id="refreshBtn" class="btn ghost">Refresh</button>
+          <div style="display: flex; gap: 0.5rem;">
+            <button id="fillAllBtn" class="btn primary">Fill all at once</button>
+            <button id="refreshBtn" class="btn ghost">Refresh</button>
+          </div>
         </div>
         <div id="courseList" class="course-list"></div>
       </section>
     </section>
 
     <div id="progressModal" class="modal hidden" role="dialog" aria-modal="true" hidden style="display: none;">
-      <div class="modal-card">
+      <div class="modal-card" style="width: min(860px, 100%);">
         <div class="modal-header">
-          <h3 id="progressTitle">Filling lectures</h3>
+          <h3 id="progressTitle">Filling courses</h3>
           <button id="progressClose" class="btn ghost">Close</button>
         </div>
+        <div class="modal-tabs" id="progressTabs"></div>
         <div class="modal-body">
           <div class="modal-row">
             <div id="progressMeta" class="muted">Waiting for progress...</div>

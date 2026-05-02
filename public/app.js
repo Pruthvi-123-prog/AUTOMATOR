@@ -13,9 +13,11 @@ const userEmail = document.getElementById('userEmail');
 const courseList = document.getElementById('courseList');
 const refreshBtn = document.getElementById('refreshBtn');
 const logoutBtn = document.getElementById('logoutBtn');
+const fillAllBtn = document.getElementById('fillAllBtn');
 
 const progressModal = document.getElementById('progressModal');
 const progressTitle = document.getElementById('progressTitle');
+const progressTabs = document.getElementById('progressTabs');
 const progressMeta = document.getElementById('progressMeta');
 const progressList = document.getElementById('progressList');
 const overallBar = document.getElementById('overallBar');
@@ -23,14 +25,13 @@ const overallText = document.getElementById('overallText');
 const progressClose = document.getElementById('progressClose');
 const progressStop = document.getElementById('progressStop');
 
-let activeStream = null;
-let progressState = {};
-let totalLectures = 0;
 let savedAccounts = {};
+let currentCourses = [];
 
-// Track per-course live progress so dashboard cards update in real time
-let liveSlug = null;
-let liveCourseDonePercent = null;
+// Track multiple concurrent streams
+let activeStreams = {}; // slug -> EventSource
+let courseData = {}; // slug -> { title, metaText, totalLectures, progressState }
+let activeTabSlug = null;
 
 function showLogin() {
   loginView.classList.remove('hidden');
@@ -161,6 +162,22 @@ refreshBtn.addEventListener('click', () => {
   loadCourses();
 });
 
+fillAllBtn?.addEventListener('click', () => {
+  const incomplete = currentCourses.filter(c => (c.progress || 0) < 100);
+  if (!incomplete.length) {
+    alert("All courses are already completed!");
+    return;
+  }
+  
+  progressModal.classList.remove('hidden');
+  progressModal.removeAttribute('hidden');
+  progressModal.style.display = 'flex';
+  
+  incomplete.forEach(c => {
+    startFill(c.slug, c.title);
+  });
+});
+
 logoutBtn.addEventListener('click', async () => {
   try {
     await api('/api/logout', { method: 'POST' });
@@ -188,29 +205,44 @@ togglePassword.addEventListener('click', () => {
 });
 
 progressClose.addEventListener('click', () => {
-  stopStream();
+  stopAllStreams();
   progressModal.classList.add('hidden');
   progressModal.setAttribute('hidden', '');
   progressModal.style.display = 'none';
 });
 
 progressStop.addEventListener('click', () => {
-  stopStream();
-  progressMeta.textContent = 'Stopped.';
+  if (activeTabSlug) {
+    stopStream(activeTabSlug);
+    if (courseData[activeTabSlug]) {
+      courseData[activeTabSlug].metaText = 'Stopped.';
+    }
+    renderTabs();
+    renderProgress();
+  }
 });
 
-function stopStream() {
-  if (activeStream) {
-    activeStream.close();
-    activeStream = null;
+function stopStream(slug) {
+  if (activeStreams[slug]) {
+    activeStreams[slug].close();
+    delete activeStreams[slug];
   }
+}
+
+function stopAllStreams() {
+  Object.keys(activeStreams).forEach(slug => stopStream(slug));
+  activeStreams = {};
+  courseData = {};
+  activeTabSlug = null;
+  if (progressTabs) progressTabs.innerHTML = '';
 }
 
 async function loadCourses() {
   courseList.innerHTML = '<div class="muted">Loading courses...</div>';
   try {
     const data = await api('/api/courses');
-    renderCourses(data.courses || []);
+    currentCourses = data.courses || [];
+    renderCourses(currentCourses);
   } catch (err) {
     courseList.innerHTML = `<div class="muted">${err.message}</div>`;
   }
@@ -269,7 +301,12 @@ function renderCourses(courses) {
       fillBtn.disabled = true;
       fillBtn.classList.add('done');
     }
-    fillBtn.addEventListener('click', () => startFill(course.slug, course.title));
+    fillBtn.addEventListener('click', () => {
+      progressModal.classList.remove('hidden');
+      progressModal.removeAttribute('hidden');
+      progressModal.style.display = 'flex';
+      startFill(course.slug, course.title);
+    });
     actions.appendChild(fillBtn);
 
     card.appendChild(title);
@@ -281,93 +318,164 @@ function renderCourses(courses) {
 }
 
 function startFill(slug, title) {
-  stopStream();
-  progressState = {};
-  totalLectures = 0;
-  liveSlug = slug;
-  liveCourseDonePercent = null;
-  progressList.innerHTML = '';
-  overallBar.style.width = '0%';
-  overallText.textContent = '0%';
-  progressMeta.textContent = 'Starting...';
-  progressTitle.textContent = `Filling: ${title}`;
-  progressModal.classList.remove('hidden');
-  progressModal.removeAttribute('hidden');
-  progressModal.style.display = 'flex';
+  stopStream(slug);
+  
+  if (!activeTabSlug) {
+    activeTabSlug = slug;
+  }
+  
+  courseData[slug] = {
+    title,
+    metaText: 'Starting...',
+    totalLectures: 0,
+    progressState: {}
+  };
+  
+  progressTitle.textContent = 'Filling courses';
+  
+  renderTabs();
+  renderProgress();
 
   const source = new EventSource(`/api/lectures/complete?slug=${encodeURIComponent(slug)}`);
-  activeStream = source;
+  activeStreams[slug] = source;
 
   source.addEventListener('status', (event) => {
+    if (!courseData[slug]) return;
     const data = JSON.parse(event.data);
-    progressMeta.textContent = data.message || 'Working...';
+    courseData[slug].metaText = data.message || 'Working...';
+    if (activeTabSlug === slug) renderProgress();
   });
 
   source.addEventListener('meta', (event) => {
+    if (!courseData[slug]) return;
     const data = JSON.parse(event.data);
-    totalLectures = data.total || 0;
-    const pending = data.pending != null ? data.pending : totalLectures;
-    progressMeta.textContent = `${totalLectures} lectures total — ${pending} to fill`;
+    courseData[slug].totalLectures = data.total || 0;
+    const pending = data.pending != null ? data.pending : courseData[slug].totalLectures;
+    courseData[slug].metaText = `${courseData[slug].totalLectures} lectures total — ${pending} to fill`;
+    if (activeTabSlug === slug) renderProgress();
   });
 
   source.addEventListener('progress', (event) => {
+    if (!courseData[slug]) return;
     const data = JSON.parse(event.data);
-    const existing = progressState[data.id] || { percent: 0, status: 'running' };
+    const existing = courseData[slug].progressState[data.id] || { percent: 0, status: 'running' };
     const incomingPercent = Number(data.percent || 0);
     const status = data.status || 'running';
 
-    // Always allow increasing percent; if status is done, lock to 100
     const resolved = status === 'done'
       ? 100
       : Math.max(existing.percent, incomingPercent);
     const safePercent = Math.min(Math.max(resolved, 0), 100);
 
-    progressState[data.id] = { ...data, percent: safePercent, status };
-    renderProgress();
-    // Live-update the dashboard card
-    updateDashboardFromProgress();
+    courseData[slug].progressState[data.id] = { ...data, percent: safePercent, status };
+    if (activeTabSlug === slug) {
+      renderProgress();
+    }
+    updateDashboardFromProgress(slug);
   });
 
   source.addEventListener('done', () => {
-    progressMeta.textContent = 'All done! ✓';
-    stopStream();
-    liveSlug = null;
-    // Reload courses to get fresh server-side percentages
-    loadCourses();
+    if (!courseData[slug]) return;
+    courseData[slug].metaText = 'All done! ✓';
+    stopStream(slug);
+    renderTabs();
+    if (activeTabSlug === slug) renderProgress();
+    loadCourses(); // update dashboard
   });
 
   source.addEventListener('server-error', (event) => {
+    if (!courseData[slug]) return;
     const data = JSON.parse(event.data || '{}');
-    progressMeta.textContent = data.message || 'Server error.';
-    if (data.code === 'TOKEN_EXPIRED') {
-      progressMeta.classList.add('error-text');
-    }
-    stopStream();
+    courseData[slug].metaText = data.message || 'Server error.';
+    stopStream(slug);
+    renderTabs();
+    if (activeTabSlug === slug) renderProgress();
   });
 
   source.addEventListener('error', () => {
-    if (!activeStream) return;
-    progressMeta.textContent = 'Connection lost. Please try again.';
-    stopStream();
+    if (!courseData[slug]) return;
+    if (!activeStreams[slug]) return;
+    courseData[slug].metaText = 'Connection lost. Please try again.';
+    stopStream(slug);
+    renderTabs();
+    if (activeTabSlug === slug) renderProgress();
   });
 }
 
-// Compute average percent from live progress and update dashboard card
-function updateDashboardFromProgress() {
-  if (!liveSlug) return;
-  const entries = Object.values(progressState);
+function renderTabs() {
+  if (!progressTabs) return;
+  progressTabs.innerHTML = '';
+  const slugs = Object.keys(courseData);
+  if (slugs.length === 0) return;
+  
+  if (!slugs.includes(activeTabSlug)) {
+    activeTabSlug = slugs[0];
+  }
+  
+  slugs.forEach(slug => {
+    const tab = document.createElement('div');
+    tab.className = `modal-tab ${slug === activeTabSlug ? 'active' : ''}`;
+    // Simple short title
+    const shortTitle = courseData[slug].title.length > 25 
+      ? courseData[slug].title.substring(0, 25) + '...'
+      : courseData[slug].title;
+      
+    const isDone = !activeStreams[slug] && courseData[slug].metaText.includes('done');
+    const isError = !activeStreams[slug] && (courseData[slug].metaText.includes('error') || courseData[slug].metaText.includes('lost'));
+    
+    let indicator = '';
+    if (isDone) indicator = ' ✓';
+    if (isError) indicator = ' ⚠️';
+    
+    tab.textContent = shortTitle + indicator;
+    
+    tab.addEventListener('click', () => {
+      activeTabSlug = slug;
+      renderTabs();
+      renderProgress();
+    });
+    progressTabs.appendChild(tab);
+  });
+}
+
+function updateDashboardFromProgress(slug) {
+  const cd = courseData[slug];
+  if (!cd) return;
+  const entries = Object.values(cd.progressState);
   if (!entries.length) return;
-  const totalCount = totalLectures || entries.length;
+  const totalCount = cd.totalLectures || entries.length;
   const totalPercent = entries.reduce((sum, item) => sum + (item.percent || 0), 0);
   const average = Math.round(totalPercent / totalCount);
-  updateCourseCardProgress(liveSlug, average);
+  updateCourseCardProgress(slug, average);
 }
 
 function renderProgress() {
-  const entries = Object.values(progressState);
-  if (!entries.length) return;
+  if (!activeTabSlug || !courseData[activeTabSlug]) {
+    progressMeta.textContent = 'No active course';
+    overallBar.style.width = '0%';
+    overallText.textContent = '0%';
+    progressList.innerHTML = '';
+    return;
+  }
+  
+  const cd = courseData[activeTabSlug];
+  progressMeta.textContent = cd.metaText;
+  
+  if (cd.metaText.includes('error') || cd.metaText.includes('expired') || cd.metaText.includes('lost')) {
+    progressMeta.classList.add('error-text');
+  } else {
+    progressMeta.classList.remove('error-text');
+  }
+  
+  const entries = Object.values(cd.progressState);
+  if (!entries.length) {
+    overallBar.style.width = '0%';
+    overallText.textContent = '0%';
+    progressList.innerHTML = '';
+    return;
+  }
 
-  const totalCount = totalLectures || entries.length;
+  const totalCount = cd.totalLectures || entries.length;
   const totalPercent = entries.reduce((sum, item) => sum + (item.percent || 0), 0);
   const average = Math.round(totalPercent / totalCount);
   const cappedAvg = Math.min(average, 100);

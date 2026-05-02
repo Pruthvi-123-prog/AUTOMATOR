@@ -372,3 +372,34 @@ input:focus {
     gap: 10px;
   }
 }
+
+.modal-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.modal-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.modal-tab {
+  padding: 12px 20px;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  color: var(--muted);
+  white-space: nowrap;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.modal-tab:hover {
+  color: var(--white);
+}
+
+.modal-tab.active {
+  color: var(--white);
+  border-bottom-color: var(--white);
+}
