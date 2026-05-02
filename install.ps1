@@ -38,8 +38,14 @@ Write-Host " [OK] Git and Node.js found." -ForegroundColor Green
 Write-Host ""
 
 # ── 3. Clone the repository ───────────────────────────────────────────────────
+$baseDir = $PWD.Path
+if ($baseDir -match "(?i)^C:\\Windows") {
+    $baseDir = [Environment]::GetFolderPath("Desktop")
+    Write-Host " [INFO] Admin/System folder detected. Defaulting installation to Desktop." -ForegroundColor Yellow
+}
+
 $repoUrl  = "https://github.com/Pruthvi-123-prog/AUTOMATOR.git"
-$destDir  = Join-Path $PWD "AUTOMATOR"
+$destDir  = Join-Path $baseDir "AUTOMATOR"
 
 if (Test-Path $destDir) {
     Write-Host " [INFO] Folder 'AUTOMATOR' already exists — pulling latest changes..." -ForegroundColor Yellow
@@ -47,7 +53,8 @@ if (Test-Path $destDir) {
     git pull
 } else {
     Write-Host " Cloning VTU Automator..." -ForegroundColor Cyan
-    git clone $repoUrl $destDir
+    Set-Location $baseDir
+    git clone $repoUrl
     Set-Location $destDir
 }
 
