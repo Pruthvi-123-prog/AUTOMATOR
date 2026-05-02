@@ -32,34 +32,56 @@ A local web app that automates lecture completion on the [VTU OPEC/PEC online po
 
 ## Installation & Quick Start
 
-### Windows (double-click, no terminal needed)
-
-```
-install.bat
-```
-
-That's it. The script installs everything and opens your browser automatically.
+> **Setup is extremely easy — just open a terminal and run one command. No technical knowledge required.**
 
 ---
 
-### Linux / macOS (one command)
+### ⚡ Option 1 — PowerShell One-Liner (Recommended for Windows)
+
+Open **PowerShell** (search it in Start Menu) and paste this single command:
+
+```powershell
+irm https://raw.githubusercontent.com/Pruthvi-123-prog/AUTOMATOR/main/install.ps1 | iex
+```
+
+This will automatically clone the repo, install dependencies, and launch the app. Done.
+
+---
+
+### 🖥️ Option 2 — Clone & Run (Terminal / PowerShell)
+
+If you have [Git](https://git-scm.com) installed, open **Terminal** or **PowerShell** and run:
+
+```powershell
+git clone https://github.com/Pruthvi-123-prog/AUTOMATOR.git && cd AUTOMATOR && .\install.bat
+```
+
+That's it — the script installs everything and opens your browser automatically.
+
+---
+
+### 🐧 Linux / macOS (one command)
 
 ```bash
-chmod +x install.sh && ./install.sh
+git clone https://github.com/Pruthvi-123-prog/AUTOMATOR.git && cd AUTOMATOR && chmod +x install.sh && ./install.sh
 ```
 
 ---
 
-### Manual (for developers)
+### 🛠️ Manual (for developers)
 
 ```bash
-# 1. Install dependencies
+# 1. Clone the repository
+git clone https://github.com/Pruthvi-123-prog/AUTOMATOR.git
+cd AUTOMATOR
+
+# 2. Install dependencies
 npm install
 
-# 2. Install the Playwright browser used for login
+# 3. Install the Playwright browser used for login
 npx playwright install chromium --with-deps
 
-# 3. Start the app (opens browser automatically)
+# 4. Start the app (opens browser automatically)
 npm start
 ```
 
@@ -69,7 +91,7 @@ Then open **http://127.0.0.1:5000** in your browser if it doesn't open automatic
 
 ## Usage
 
-1. **Run** `install.bat` (Windows) or `./install.sh` (Linux/Mac) — your browser opens automatically.
+1. **Install** using the one-liner above (PowerShell `irm` command, or `git clone && .\install.bat`) — your browser opens automatically.
 2. **Log in** with your VTU portal email and password.
 3. Your **enrolled courses** appear with their current progress.
 4. Click **Fill** on any course — a live progress panel shows each lecture updating in real time.
